@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinter Plant Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f4; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+        h2 { color: #34495e; margin-top: 20px; }
+        h3 { color: #34495e; margin-top: 15px; }
+        p { line-height: 1.6; color: #555; }
+        img { max-width: 100%; height: auto; display: block; margin: 10px 0; }
+        .logo { text-align: center; margin-bottom: 20px; }
+        .logo img { max-width: 200px; height: auto; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        .highlight { background-color: #e8f4f8; padding: 10px; border-left: 4px solid #3498db; }
+        .results { background-color: #f9f9f9; padding: 10px; border-left: 4px solid #3498db; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="logo.png" alt="Company Logo">
+        </div>
+        <h1>Sinter Plant Analysis Report</h1><br>
+        <h3>Prepared by: Harsh Prakash</h3>
+        <h3>Reference Number: VT20253303</h3>
+        <p>
+            The sinter plant plays a critical role in steelmaking by preparing iron ore fines for the blast furnace through agglomeration into sinter, a porous material that enhances blast furnace efficiency. This process involves key parameters such as temperature, pressure, material feed rates, air flow, and fuel rates, which are represented in the dataset as anonymized variables X1 to X14. These parameters influence stack emissions (the output), a critical metric for environmental compliance, typically measured as particulate matter or gaseous pollutants like CO₂, SO₂, or NOx. The dataset, spanning December 10–31, 2022, with 2,461 records collected at 10-minute intervals, provides a comprehensive basis for analyzing emission trends and predicting future values. This report details the exploratory data analysis (EDA), regression modeling, and 20-minute-ahead time series forecasting to optimize the sinter plant process and ensure regulatory adherence. The analysis was conducted assuming X1 might represent temperature, X8 air flow, and other variables as related process measurements, pending further mapping with resources like World Steel Association guides or metallurgical journals. The report is generated on June 19, 2025, at 11:26 AM IST.
+        </p>
+        <div class="highlight">
+            <p><strong>Interesting Fact:</strong> X6 shows high variability and outliers, influencing output spikes observed in the time series, potentially linked to fuel rate fluctuations.</p>
+        </div>
+
+        <h2>Exploratory Data Analysis</h2>
+        <p>
+            EDA helps uncover patterns, correlations, and anomalies in the dataset to inform modeling. The process involved the following steps:
+            <ul>
+                <li><strong>Load and Inspect Data:</strong> Checked data types, missing values, and basic statistics (e.g., mean output 38.21, max 54.08).</li>
+                <li><strong>Visualize Distributions:</strong> Plotted histograms for X1–X14 and output to understand their spread.</li>
+                <li><strong>Check Correlations:</strong> Used a correlation matrix to identify relationships between inputs and output.</li>
+                <li><strong>Time Series Trends:</strong> Plotted output over time to detect trends or seasonality.</li>
+                <li><strong>Outlier Detection:</strong> Identified anomalies using boxplots or z-scores.</li>
+                <li><strong>Feature Insights:</strong> Analyzed how key inputs (e.g., highly correlated ones) affect the output.</li>
+            </ul>
+        </p>
+
+        <h3>1. Distribution Plots (distributions.png)</h3>
+        <img src="distributions.png" alt="Distributions of Variables">
+        <div class="results">
+            <p><strong>Results:</strong></p>
+            <p><strong>Description:</strong> This plot shows histograms with kernel density estimates (KDE) for all columns (X1 to X14 and output).</p>
+            <p><strong>Observations:</strong>
+                - X1 to X5, X7, X8: These variables (e.g., X1 ~47, X2 ~38, X5 ~63) appear to follow a roughly normal distribution with a single peak, indicating stable process conditions.
+                - X6: Shows a skewed distribution with a long tail toward higher values (up to ~27), suggesting variability or occasional high values (possibly a fuel-related parameter).
+                - X9: Has a highly skewed distribution, peaking around 920 with a sharp drop-off and some values as low as 359. This could indicate a categorical or constrained variable (e.g., a setpoint or equipment state).
+                - X10 to X14: These variables (e.g., X10 ~1.9, X11 ~2.6, X12 ~3.1, X13 ~3.0, X14 ~7.7) show narrower distributions, with X14 being particularly tight (near 7.7), suggesting it’s a stable control parameter.
+                - Output: Ranges from ~32 to ~54 with a peak around 38, showing moderate variability and a slight right skew, which aligns with the summary statistics (mean 38.21, max 54.08).
+            </p>
+            <p><strong>Insights:</strong>
+                The skewness in X6 and X9 may require transformation (e.g., log) if used in linear models, though tree-based models (e.g., XGBoost) handle skewness well. The tight distribution of X14 suggests it’s less influential unless correlated with other variables.
+            </p>
+        </div>
+
+        <h3>2. Boxplot for Outlier Detection (boxplots.png)</h3>
+        <img src="boxplots.png" alt="Boxplots for Outliers">
+        <div class="results">
+            <p><strong>Results:</strong></p>
+            <p><strong>Description:</strong> This plot displays boxplots for all columns to identify outliers (points outside the whiskers, typically 1.5 * IQR from the quartiles).</p>
+            <p><strong>Observations:</strong>
+                - X1 to X5, X7, X8, X10 to X14: Few or no outliers, with boxes centered around their means (e.g., X1 ~47, X5 ~63, X14 ~7.7), indicating consistent data.
+                - X6: Multiple outliers above the upper whisker (around 15–27), consistent with its skewed distribution and high max value (27.93).
+                - X9: Several outliers below the lower whisker (around 359–900), reflecting its skewed nature and low minimum (359.9).
+                - X12: Minor outliers above the upper whisker (around 6), given its max (6.46).
+                - Output: Significant outliers above the upper whisker (around 50–54), matching its max (54.08), indicating occasional high emission spikes.
+            </p>
+            <p><strong>Insights:</strong>
+                Outliers in X6, X9, X12, and output could affect model performance. For regression, you might consider removing or capping extreme values (e.g., output > 50) if they’re anomalies. The lack of outliers in most variables suggests the data is generally clean beyond these exceptions.
+            </p>
+        </div>
+
+        <h3>3. Correlation Matrix (correlation_matrix.png)</h3>
+        <img src="correlation_matrix.png" alt="Correlation Matrix">
+        <div class="results">
+            <p><strong>Results:</strong></p>
+            <p><strong>Description:</strong> This heatmap shows the Pearson correlation coefficients between all pairs of variables, with colors ranging from blue (negative) to red (positive).</p>
+            <p><strong>Observations:</strong>
+                - <strong>High Positive Correlations:</strong>
+                    - X1 to X5 are highly correlated with each other (e.g., X1 vs. X2 = 0.84, X5 vs. X4 = 0.59), suggesting they may represent related process parameters.
+                    - X6 has moderate positive correlations with X7 (0.64) and X8 (0.61), indicating some interdependence.
+                    - X10 to X13 show strong correlations (e.g., X10 vs. X11 = 0.84), possibly indicating a group of related control variables.
+                - <strong>Correlations with Output:</strong>
+                    - X6 (0.06), X8 (0.10), X9 (0.13), X10 (0.15), X11 (0.19), X12 (0.10): These are the highest correlations with output, though all are weak to moderate.
+                    - Negative correlations are minimal (e.g., X7 vs. output = -0.26).
+                - <strong>Multicollinearity:</strong> High correlations between input variables (e.g., X1 to X5) suggest multicollinearity, which could affect linear regression but is less of an issue for tree-based models.
+            </p>
+            <p><strong>Insights:</strong>
+                The weak correlations with output (max ~0.19) suggest that linear relationships are limited, supporting the use of non-linear models like XGBoost. Consider feature engineering (e.g., interactions between X6 and X8) to improve prediction power.
+            </p>
+        </div>
+
+        <h3>4. Time Series Plot of Output (output_timeseries.png)</h3>
+        <img src="output_timeseries.png" alt="Output Time Series">
+        <div class="results">
+            <p><strong>Results:</strong></p>
+            <p><strong>Description:</strong> This plot shows the output (stack emissions) over time from Dec 10 to Dec 31, 2022.</p>
+            <p><strong>Observations:</strong>
+                - The time series exhibits frequent fluctuations between ~35 and ~45, with occasional spikes up to ~50–54.
+                - Notable peaks occur around mid-December and late December, suggesting periodic high-emission events (possibly due to process changes or anomalies).
+                - The data appears dense with 10-minute intervals, consistent with the 2,461 rows over 21 days.
+            </p>
+            <p><strong>Insights:</strong>
+                The variability supports the need for time series forecasting to predict short-term spikes. The spikes align with the outliers seen in the boxplot, reinforcing the need to investigate their cause (e.g., equipment failure, process adjustment).
+            </p>
+        </div>
+
+        <h3>5. Scatter Plot (e.g., scatter_X6_vs_output.png, scatter_X12_vs_output.png, scatter_X13_vs_output.png)</h3>
+        <img src="scatter_X6_vs_output.png" alt="X6 vs Output Scatter Plot">
+        <div class="results">
+            <p><strong>Results for X6 vs Output:</strong></p>
+            <p><strong>Description:</strong> This plot shows the relationship between X6 and output.</p>
+            <p><strong>Observations:</strong>
+                - A dense cloud of points spans X6 from ~5 to ~25 and output from ~35 to ~55.
+                - No clear linear trend, but there’s a slight positive scatter, consistent with the correlation of 0.06.
+                - Higher X6 values (15–25) are associated with a wider range of output values, including the highest emissions (~50–54).
+            </p>
+            <p><strong>Insights:</strong>
+                The weak correlation suggests X6 alone isn’t a strong predictor, but its variability and association with high output values make it a candidate for further exploration (e.g., in combination with X8 or lagged features).
+            </p>
+        </div>
+        <img src="scatter_X12_vs_output.png" alt="X12 vs Output Scatter Plot">
+        <div class="results">
+            <p><strong>Results for X12 vs Output:</strong></p>
+            <p><strong>Description:</strong> This plot shows the relationship between X12 and output.</p>
+            <p><strong>Observations:</strong>
+                - A dense cluster spans X12 from ~1 to ~6 and output from ~35 to ~55, with some spread at higher X12 values.
+                - No strong linear trend, consistent with the correlation of 0.10, but higher X12 values (e.g., >5) show occasional output spikes (~50–54).
+            </p>
+            <p><strong>Insights:</strong>
+                X12’s weak correlation and outlier association suggest it may contribute to emission peaks, warranting further analysis with other variables.
+            </p>
+        </div>
+        <img src="scatter_X13_vs_output.png" alt="X13 vs Output Scatter Plot">
+        <div class="results">
+            <p><strong>Results for X13 vs Output:</strong></p>
+            <p><strong>Description:</strong> This plot shows the relationship between X13 and output.</p>
+            <p><strong>Observations:</strong>
+                - A dense cluster spans X13 from ~0 to ~6 and output from ~35 to ~55, with a vertical spread at X13 values near 0.
+                - No clear linear trend, aligning with a weak correlation, but lower X13 values show some high output instances (~50–55).
+            </p>
+            <p><strong>Insights:</strong>
+                X13’s variability at lower values and association with high outputs suggest it could be a control parameter worth exploring further.
+            </p>
+        </div>
+
+        <h2>Regression Analysis</h2>
+        <p>
+            A regression model was built to predict stack emissions (output) from X1–X14. The process involved:
+            <ul>
+                <li><strong>Preprocess Data:</strong> Handled missing values with mean imputation, scaled features using StandardScaler, and split data into 80% training and 20% testing sets.</li>
+                <li><strong>Model Selection:</strong> Trained Linear Regression, Random Forest, and XGBoost to compare performance.</li>
+                <li><strong>Evaluate Models:</strong> Used RMSE, R², and MAE metrics, with k-fold cross-validation for robustness.</li>
+                <li><strong>Feature Importance:</strong> Extracted importance for tree-based models and coefficients for Linear Regression to identify key drivers.</li>
+            </ul>
+        </p>
+        <table>
+            <tr>
+                <th>Model</th>
+                <th>RMSE</th>
+                <th>R²</th>
+                <th>MAE</th>
+                <th>CV RMSE</th>
+            </tr>
+            <tr>
+                <td>Linear Regression</td>
+                <td>1.9605628592202682</td>
+                <td>0.14192845144623478</td>
+                <td>1.417150278339966</td>
+                <td>2.26819300195088</td>
+            </tr>
+            <tr>
+                <td>Random Forest</td>
+                <td>1.6687421168889731</td>
+                <td>0.37835790687341764</td>
+                <td>1.0519976203068984</td>
+                <td>2.4612453591650074</td>
+            </tr>
+            <tr>
+                <td>XGBoost</td>
+                <td>1.720318097262742</td>
+                <td>0.3393377746322932</td>
+                <td>1.1273348759509898</td>
+                <td>2.5931614848406292</td>
+            </tr>
+        </table>
+        <p>
+            <strong>Results:</strong> Random Forest achieved the lowest RMSE (1.6687) and highest R² (0.3784), indicating the best predictive performance among the models, despite XGBoost being expected to outperform based on EDA insights. Linear Regression performed poorly (R² = 0.1419), likely due to multicollinearity and weak linear correlations. Cross-validation RMSE values suggest some model instability, particularly for XGBoost (2.5932). The low R² values across all models indicate room for improvement through feature engineering or outlier handling.
+        </p>
+        <h3>Feature Importance Plots</h3>
+        <img src="feature_importance_linear_regression.png" alt="Linear Regression Feature Coefficients">
+        <div class="results">
+            <p><strong>Results for Linear Regression:</strong></p>
+            <p><strong>Description:</strong> This plot shows the absolute values of the coefficients from the Linear Regression model, indicating the strength of each feature’s impact on output.</p>
+            <p><strong>Observations:</strong>
+                - The coefficients suggest X6 and X11 have the largest magnitudes, indicating their influence on output, though the direction (positive or negative) depends on the sign.
+                - Other variables like X8 and X12 show moderate effects, while X14 has minimal impact.
+            </p>
+            <p><strong>Insights:</strong>
+                The coefficient-based importance highlights X6 and X11 as key linear predictors, but the low R² (0.1419) suggests linear relationships are weak, supporting the need for non-linear models.
+            </p>
+        </div>
+        <img src="feature_importance_random_forest.png" alt="Random Forest Feature Importance">
+        <div class="results">
+            <p><strong>Results for Random Forest:</strong></p>
+            <p><strong>Description:</strong> This plot shows the feature importance scores from the Random Forest model, based on how much each feature contributes to reducing impurity in the tree splits.</p>
+            <p><strong>Observations:</strong>
+                - X6 and X11 are the most important features, aligning with their variability and correlation (0.19 for X11).
+                - X8 and X12 also contribute significantly, reflecting their moderate correlations and outlier associations.
+            </p>
+            <p><strong>Insights:</strong>
+                The emphasis on X6 and X11 supports their role as key drivers, with Random Forest’s better performance (R² = 0.3784) indicating it captures non-linear patterns effectively.
+            </p>
+        </div>
+        <img src="feature_importance_xgboost.png" alt="XGBoost Feature Importance">
+        <div class="results">
+            <p><strong>Results for XGBoost:</strong></p>
+            <p><strong>Description:</strong> This plot shows the feature importance scores from the XGBoost model, based on the gain or contribution of each feature to the model’s predictions.</p>
+            <p><strong>Observations:</strong>
+                - X6 and X11 are the most influential variables, with X6’s variability and X11’s correlation (0.19) driving predictions.
+                - X8 and X12 show minor contributions, consistent with their weaker correlations.
+            </p>
+            <p><strong>Insights:</strong>
+                The focus on X6 and X11 aligns with Random Forest, though XGBoost’s slightly lower R² (0.3393) suggests it may overfit or require tuning.
+            </p>
+        </div>
+
+        <h2>Time Series Forecasting</h2>
+        <p>
+            A time series model forecasted stack emissions 20 minutes ahead using a sliding window approach. The process included:
+            <ul>
+                <li><strong>Prepare Data:</strong> Created lagged features (e.g., output at t-10, t-20 minutes) and used X1–X14 at current time.</li>
+                <li><strong>Model Selection:</strong> Employed XGBoost with lagged features for simplicity (LSTM could be explored for advanced modeling).</li>
+                <li><strong>Train and Forecast:</strong> Trained on 80% of the data and predicted output at t+20.</li>
+                <li><strong>Evaluate:</strong> Used RMSE and MAE for forecasting accuracy.</li>
+                <li><strong>Visualize:</strong> Plotted actual vs. forecasted values.</li>
+            </ul>
+        </p>
+        <ul>
+            <li><strong>RMSE:</strong> 1.7196034064641696</li>
+            <li><strong>MAE:</strong> 1.1054541650840202</li>
+        </ul>
+        <img src="forecast_plot.png" alt="Actual vs Forecasted Emissions">
+        <div class="results">
+            <p><strong>Results:</strong> The forecast plot shows XGBoost capturing short-term trends effectively, with RMSE (1.7196) and MAE (1.1055) indicating reasonable accuracy. The model tracks fluctuations well but struggles with peak predictions (>50), suggesting the need for outlier adjustments or additional lagged features.</p>
+        </div>
+
+        <h2>Conclusion</h2>
+        <p>
+            The analysis provides a detailed understanding of stack emissions in the sinter plant, identifying X6, X11, X12, and X13 as key drivers. X6’s variability, likely tied to fuel rates, and X11’s moderate correlation (0.19) are critical, while X12 and X13 contribute through outlier associations. Random Forest outperformed in regression (RMSE 1.6687, R² 0.3784), though all models showed limited explanatory power due to weak correlations, suggesting non-linear dynamics. The 20-minute-ahead XGBoost forecast (RMSE 1.7196) supports real-time monitoring but requires refinement for peak predictions. Feature importance plots consistently highlight X6 and X11, with Linear Regression coefficients, Random Forest, and XGBoost importance scores reinforcing their significance. Future work could involve feature engineering (e.g., X6-X8 interactions), outlier capping (e.g., output > 50), or advanced models (e.g., LSTM) to enhance accuracy. These insights can optimize the sinter plant process, reduce emissions, and ensure environmental compliance. The report was finalized on June 19, 2025, at 11:26 AM IST.
+        </p>
+    </div>
+</body>
+</html>
